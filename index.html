@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de Costos y Precios | Negocios de Alimentos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            slate: { 850: '#1e293b', 950: '#0f172a' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .tab-active { border-bottom: 3px solid #10b981; color: #059669; font-weight: 600; }
+    .tab-inactive { border-bottom: 3px solid transparent; color: #64748b; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #10b981; cursor: pointer;
+      border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .slider::-moz-range-thumb {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #10b981; cursor: pointer;
+      border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #pdf-content, #pdf-content * { visibility: visible; }
+      #pdf-content { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <!-- HEADER -->
+  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-50 no-print">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="bg-emerald-500 p-2.5 rounded-xl">
+          <i class="fas fa-utensils text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold leading-tight">Calculadora de Costos y Precios</h1>
+          <p class="text-slate-400 text-xs sm:text-sm">Para negocios de comida · Hecha para que cualquiera la pueda usar</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="generarPDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+          <i class="fas fa-file-pdf"></i> Generar Reporte PDF
+        </button>
+        <button onclick="limpiarTodo()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+          <i class="fas fa-trash-alt"></i> Limpiar todo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- DATOS DEL NEGOCIO -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 no-print">
+      <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-2">
+        <i class="fas fa-store text-emerald-500"></i> Datos de tu negocio
+      </h2>
+      <p class="text-xs text-slate-500 mb-4">Solo se usa para que el PDF salga con el nombre de tu negocio.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del negocio</label>
+          <input type="text" id="nombreNegocio" placeholder="Ej. Taquería El Pastor" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" oninput="guardarDatos()" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de negocio</label>
+          <select id="tipoGiro" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" onchange="guardarDatos()">
+            <option value="Taquería">Taquería</option>
+            <option value="Tortería">Tortería</option>
+            <option value="Marisquería">Marisquería</option>
+            <option value="Cocina Económica">Cocina Económica</option>
+            <option value="Cafetería">Cafetería</option>
+            <option value="Pizzería">Pizzería</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABS -->
+    <div class="flex border-b border-slate-200 no-print overflow-x-auto">
+      <button id="tab1" onclick="cambiarTab(1)" class="tab-active px-5 py-3 text-sm sm:text-base flex items-center gap-2 whitespace-nowrap">
+        <i class="fas fa-clipboard-list"></i> 1. Costear un platillo o producto
+      </button>
+      <button id="tab2" onclick="cambiarTab(2)" class="tab-inactive px-5 py-3 text-sm sm:text-base flex items-center gap-2 whitespace-nowrap">
+        <i class="fas fa-chart-line"></i> 2. Gastos del mes y punto de equilibrio
+      </button>
+    </div>
+
+    <!-- ===================== MÓDULO 1: COSTEO ===================== -->
+    <div id="modulo1" class="space-y-6">
+
+      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800">
+        <strong>¿Para qué sirve esta sección?</strong><br>
+        Aquí calculas <strong>cuánto te cuesta hacer cada taco, cada quesadilla, cada orden o cada plato de comida</strong>. 
+        Es una herramienta aparte. No afecta los números del mes.
+      </div>
+
+      <!-- Info del platillo -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h2 class="text-base font-semibold text-slate-700 mb-1 flex items-center gap-2">
+          <i class="fas fa-hamburger text-emerald-500"></i> ¿Qué producto vas a costear?
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Puede ser un taco, una orden, un plato, una quesadilla, etc.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del producto</label>
+            <input type="text" id="nombrePlatillo" placeholder="Ej. Taco al pastor, Orden de 5 tacos, Plato de mole..." class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" oninput="calcularTodo(); guardarDatos()" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">¿Cuántas piezas o porciones te rinde esta receta?</label>
+            <input type="number" id="porciones" min="1" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" oninput="calcularTodo(); guardarDatos()" />
+            <p class="text-xs text-slate-400 mt-1">Ejemplo: si la receta es para 20 tacos, pon 20. Si es para 1 plato, pon 1.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabla de ingredientes -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
+          <h2 class="text-base font-semibold text-slate-700 flex items-center gap-2">
+            <i class="fas fa-carrot text-emerald-500"></i> Ingredientes que usas
+          </h2>
+          <button onclick="agregarIngrediente()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition self-start">
+            <i class="fas fa-plus"></i> Agregar ingrediente
+          </button>
+        </div>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
+          <strong>Cómo llenar esta tabla:</strong><br>
+          1. Elige la unidad en la que <strong>compraste</strong> el producto (kg, gramos, litro...)<br>
+          2. Pon cuánto te costó esa unidad<br>
+          3. Pon <strong>cuánto usas realmente</strong> en esta receta (puedes poner gramos aunque hayas comprado por kilo)
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50 text-slate-600">
+                <th class="text-left py-3 px-2 rounded-tl-lg">Ingrediente</th>
+                <th class="text-left py-3 px-2">Unidad de compra</th>
+                <th class="text-right py-3 px-2">Precio de compra</th>
+                <th class="text-right py-3 px-2">Cantidad que usas</th>
+                <th class="text-left py-3 px-2">Unidad de uso</th>
+                <th class="text-right py-3 px-2">Costo</th>
+                <th class="py-3 px-2 rounded-tr-lg w-10"></th>
+              </tr>
+            </thead>
+            <tbody id="bodyIngredientes"></tbody>
+          </table>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <div class="bg-slate-50 rounded-xl px-5 py-3 text-right">
+            <p class="text-xs text-slate-500">Costo total de los ingredientes de esta receta</p>
+            <p class="text-xl font-bold text-slate-800" id="costoIngredientes">$0.00</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Costos extra por pieza -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h2 class="text-base font-semibold text-slate-700 mb-1 flex items-center gap-2">
+          <i class="fas fa-box-open text-emerald-500"></i> Otros costos por cada pieza o platillo
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Cosas que se gastan cada vez que vendes una unidad (empaque) + un porcentaje por gas, luz y comida que se desperdicia.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Costo de empaque o desechables por pieza</label>
+            <input type="number" id="costoEmpaque" min="0" step="0.01" value="0" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" oninput="calcularTodo(); guardarDatos()" />
+            <p class="text-xs text-slate-400 mt-1">Ej. servilleta, bolsa, plato de unicel, salsa, etc.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              Porcentaje extra por gas, luz y merma: 
+              <span class="text-emerald-600 font-semibold" id="porcentajeMermaLabel">10%</span>
+            </label>
+            <input type="range" id="porcentajeMerma" min="0" max="25" value="10" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider" oninput="document.getElementById('porcentajeMermaLabel').textContent=this.value+'%'; calcularTodo(); guardarDatos()" />
+            <div class="flex justify-between text-xs text-slate-400 mt-1"><span>0%</span><span>25%</span></div>
+            <p class="text-xs text-slate-400 mt-1">Lo normal es entre 8% y 15%. Cubre el gas y la luz de cocinar + la comida que se echa a perder.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Resultado del costeo -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h2 class="text-base font-semibold text-slate-700 mb-1 flex items-center gap-2">
+          <i class="fas fa-tags text-emerald-500"></i> Resultado: ¿Cuánto te cuesta cada pieza?
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Aquí ves el costo real de hacer cada taco, cada orden o cada plato, y un precio de venta sugerido.</p>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                ¿Qué porcentaje de ganancia quieres? 
+                <span class="text-emerald-600 font-bold text-lg" id="margenLabel">65%</span>
+              </label>
+              <input type="range" id="margenGanancia" min="20" max="80" value="65" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider" oninput="document.getElementById('margenLabel').textContent=this.value+'%'; calcularTodo(); guardarDatos()" />
+              <div class="flex justify-between text-xs text-slate-400 mt-1">
+                <span>20%</span>
+                <span class="text-emerald-600 font-medium">Recomendado: 60–70%</span>
+                <span>80%</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-2">Un margen de 65% significa que de cada $100 que cobras, aproximadamente $35 se van en el costo del producto y $65 quedan para pagar renta, sueldos y tu ganancia.</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <input type="checkbox" id="incluirIVA" class="w-5 h-5 mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" onchange="calcularTodo(); guardarDatos()" />
+              <div>
+                <label for="incluirIVA" class="text-sm font-medium text-slate-700">Incluir IVA (16%) en el precio</label>
+                <p class="text-xs text-slate-400">Solo márcalo si estás obligado a cobrar IVA.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 rounded-xl p-5 space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-600">Costo de hacer <strong>1 pieza / 1 platillo</strong></span>
+              <span class="font-bold text-red-600 text-xl" id="costoTotalPlatillo">$0.00</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-600">Precio de venta sugerido</span>
+              <span class="font-bold text-emerald-600 text-2xl" id="precioVenta">$0.00</span>
+            </div>
+            <div class="flex justify-between items-center border-t border-slate-200 pt-3">
+              <span class="text-sm text-slate-600">Ganancia por cada pieza</span>
+              <span class="font-bold text-emerald-700 text-lg" id="gananciaPorPlatillo">$0.00</span>
+            </div>
+            <div class="text-xs text-slate-500" id="infoMultiplicador"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== MÓDULO 2: MENSUAL ===================== -->
+    <div id="modulo2" class="space-y-6 hidden">
+
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+        <strong>¿Para qué sirve esta sección?</strong><br>
+        Aquí calculas cómo te va en el mes: cuánto entra, cuánto se va en ingredientes y gastos fijos, y cuánto necesitas vender mínimo para no perder dinero. 
+        <strong>Es independiente del costeo de platillos</strong>.
+      </div>
+
+      <!-- Gastos fijos -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
+          <h2 class="text-base font-semibold text-slate-700 flex items-center gap-2">
+            <i class="fas fa-building text-emerald-500"></i> Gastos fijos del mes
+          </h2>
+          <button onclick="agregarGastoFijo()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition self-start">
+            <i class="fas fa-plus"></i> Agregar otro gasto
+          </button>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">
+          Estos son los gastos que pagas casi siempre, aunque vendas poco o mucho. Ya vienen los más comunes. Solo pon el monto mensual.
+        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50 text-slate-600">
+                <th class="text-left py-3 px-2 rounded-tl-lg">Concepto</th>
+                <th class="text-right py-3 px-2">Monto mensual ($)</th>
+                <th class="py-3 px-2 rounded-tr-lg w-10"></th>
+              </tr>
+            </thead>
+            <tbody id="bodyGastosFijos"></tbody>
+          </table>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <div class="bg-slate-50 rounded-xl px-5 py-3 text-right">
+            <p class="text-xs text-slate-500">Total de gastos fijos al mes</p>
+            <p class="text-xl font-bold text-red-600" id="totalGastosFijos">$0.00</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ventas y materia prima -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h2 class="text-base font-semibold text-slate-700 mb-1 flex items-center gap-2">
+          <i class="fas fa-chart-bar text-emerald-500"></i> Ventas y costo de materia prima
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Pon números aproximados de cómo te va normalmente en el mes.</p>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">¿Cuánto vendes aproximadamente al día? ($)</label>
+            <input type="number" id="ventasDia" min="0" step="0.01" value="5000" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" oninput="calcularTodo(); guardarDatos()" />
+            <p class="text-xs text-slate-400 mt-1">Ejemplo: si en un día normal entran alrededor de $5,000, pon 5000.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Días que abres al mes</label>
+            <input type="number" id="diasMes" min="1" max="31" value="26" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" oninput="calcularTodo(); guardarDatos()" />
+            <p class="text-xs text-slate-400 mt-1">Si descansas un día a la semana ≈ 26 días.</p>
+          </div>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">
+            Costo de materia prima del mes ($)
+          </label>
+          <input type="number" id="costoMateriaPrima" min="0" step="0.01" value="0" class="w-full max-w-xs border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" oninput="calcularTodo(); guardarDatos()" />
+          <p class="text-xs text-slate-600 mt-2">
+            <strong>¿Qué pones aquí?</strong> Lo que gastas aproximadamente al mes en todos los ingredientes y productos que compras para cocinar: 
+            carne, pollo, tortillas, verduras, aceite, salsas, queso, pan, etc. 
+            <br>No incluyas renta, luz ni sueldos (esos van arriba en gastos fijos).
+          </p>
+        </div>
+      </section>
+
+      <!-- Resultados del mes -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h2 class="text-base font-semibold text-slate-700 mb-1 flex items-center gap-2">
+          <i class="fas fa-coins text-emerald-500"></i> Resultados del mes
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Con los números que pusiste, esto es lo que te quedaría.</p>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-slate-50 rounded-xl p-4">
+            <p class="text-xs text-slate-500 mb-1">Dinero que entra por ventas</p>
+            <p class="text-2xl font-bold text-slate-800" id="ventaTotalMes">$0.00</p>
+          </div>
+          <div class="bg-red-50 rounded-xl p-4">
+            <p class="text-xs text-red-600 mb-1">Costo de materia prima</p>
+            <p class="text-2xl font-bold text-red-600" id="costoInsumosMes">$0.00</p>
+          </div>
+          <div class="bg-red-50 rounded-xl p-4">
+            <p class="text-xs text-red-600 mb-1">Gastos fijos del mes</p>
+            <p class="text-2xl font-bold text-red-600" id="gastosFijosResumen">$0.00</p>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-4 sm:col-span-2 lg:col-span-1">
+            <p class="text-xs text-emerald-700 mb-1">Utilidad neta del mes<br>(lo que realmente te queda)</p>
+            <p class="text-3xl font-bold text-emerald-600" id="utilidadNetaMes">$0.00</p>
+          </div>
+          <div class="bg-amber-50 rounded-xl p-4 sm:col-span-2">
+            <p class="text-xs text-amber-700 mb-1 font-medium">
+              <i class="fas fa-balance-scale mr-1"></i> Punto de equilibrio
+            </p>
+            <p class="text-sm text-slate-600 mb-3">Es el mínimo que necesitas vender para no perder dinero (solo para cubrir tus gastos).</p>
+            <div class="flex flex-wrap gap-6">
+              <div>
+                <p class="text-xs text-slate-500">Debes vender al día aproximadamente</p>
+                <p class="text-xl font-bold text-amber-700" id="peDia">$0.00</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Debes vender al mes aproximadamente</p>
+                <p class="text-xl font-bold text-amber-700" id="peMes">$0.00</p>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 mt-3" id="peExplicacion"></p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="text-center text-slate-400 text-xs py-8 no-print">
+    Calculadora de Costos para Negocios de Alimentos · Los datos se guardan solo en tu navegador
+  </footer>
+
+  <!-- PDF -->
+  <div id="pdf-content" class="hidden bg-white p-8" style="width: 210mm; font-family: Inter, sans-serif; color: #1e293b;">
+    <div class="border-b-2 border-emerald-600 pb-4 mb-6">
+      <h1 class="text-2xl font-bold text-slate-900" id="pdf-nombreNegocio">Mi Negocio</h1>
+      <p class="text-slate-600" id="pdf-tipoGiro">Taquería</p>
+      <p class="text-sm text-slate-500 mt-1">Reporte de Costeo y Proyección · <span id="pdf-fecha"></span></p>
+    </div>
+
+    <h2 class="text-lg font-bold text-slate-800 mb-3 border-l-4 border-emerald-500 pl-3">1. Costeo del producto</h2>
+    <p class="mb-3 text-sm"><strong>Producto:</strong> <span id="pdf-nombrePlatillo">—</span> &nbsp;&nbsp; <strong>Porciones:</strong> <span id="pdf-porciones">1</span></p>
+    
+    <table class="w-full text-sm mb-5 border-collapse" style="border: 1px solid #cbd5e1;">
+      <thead>
+        <tr style="background-color: #f1f5f9;">
+          <th class="border border-slate-300 py-2 px-2 text-left">Ingrediente</th>
+          <th class="border border-slate-300 py-2 px-2 text-left">Unidad compra</th>
+          <th class="border border-slate-300 py-2 px-2 text-right">Precio compra</th>
+          <th class="border border-slate-300 py-2 px-2 text-right">Cant. usada</th>
+          <th class="border border-slate-300 py-2 px-2 text-left">Unidad uso</th>
+          <th class="border border-slate-300 py-2 px-2 text-right">Costo</th>
+        </tr>
+      </thead>
+      <tbody id="pdf-ingredientes"></tbody>
+    </table>
+
+    <div class="grid grid-cols-2 gap-4 text-sm mb-8">
+      <div>
+        <p class="mb-1">Costo ingredientes: <strong id="pdf-costoIngredientes">$0.00</strong></p>
+        <p class="mb-1">Empaque: <strong id="pdf-empaque">$0.00</strong></p>
+        <p class="mb-1">% Gas/luz/merma: <strong id="pdf-merma">0%</strong></p>
+      </div>
+      <div style="background-color: #f8fafc; padding: 12px; border-radius: 8px;">
+        <p class="mb-1">Costo por pieza/platillo: <strong style="color: #dc2626;" id="pdf-costoTotal">$0.00</strong></p>
+        <p class="mb-1">Margen: <strong id="pdf-margen">65%</strong></p>
+        <p class="mb-1">Precio sugerido: <strong style="color: #059669; font-size: 1.1em;" id="pdf-precio">$0.00</strong></p>
+        <p>Ganancia por pieza: <strong style="color: #047857;" id="pdf-ganancia">$0.00</strong></p>
+      </div>
+    </div>
+
+    <h2 class="text-lg font-bold text-slate-800 mb-3 border-l-4 border-emerald-500 pl-3">2. Resultados del mes</h2>
+    
+    <div class="grid grid-cols-2 gap-6 text-sm mb-5">
+      <div>
+        <p class="mb-1">Ventas al día: <strong id="pdf-ventasDia">$0.00</strong></p>
+        <p class="mb-1">Días abiertos: <strong id="pdf-diasMes">0</strong></p>
+        <p class="mb-1">Venta total del mes: <strong id="pdf-ventaTotal">$0.00</strong></p>
+        <p class="mb-1">Costo materia prima: <strong style="color: #dc2626;" id="pdf-costoInsumos">$0.00</strong></p>
+      </div>
+      <div>
+        <p class="mb-1">Gastos fijos: <strong style="color: #dc2626;" id="pdf-gastosFijos">$0.00</strong></p>
+        <p class="mt-2">Utilidad neta: <strong style="color: #059669; font-size: 1.15em;" id="pdf-utilidad">$0.00</strong></p>
+      </div>
+    </div>
+
+    <div style="background-color: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px;">
+      <p class="font-semibold text-amber-800 mb-2">Punto de equilibrio</p>
+      <p class="text-sm mb-1">Debes vender aproximadamente <strong id="pdf-peDia">$0.00</strong> al día</p>
+      <p class="text-sm">o <strong id="pdf-peMes">$0.00</strong> al mes para no perder dinero.</p>
+    </div>
+
+    <p class="text-xs text-slate-400 mt-10 text-center">Generado con Calculadora de Costos para Negocios de Alimentos</p>
+  </div>
+
+  <script>
+    // ===================== ESTADO =====================
+    let ingredientes = [];
+    let gastosFijos = [
+      { id: 1, concepto: 'Renta del local', monto: 0 },
+      { id: 2, concepto: 'Sueldos / nómina', monto: 0 },
+      { id: 3, concepto: 'Recibo de luz (energía eléctrica)', monto: 0 },
+      { id: 4, concepto: 'Recibo de agua', monto: 0 },
+      { id: 5, concepto: 'Gas (cilindro o natural)', monto: 0 },
+      { id: 6, concepto: 'Internet / teléfono', monto: 0 },
+      { id: 7, concepto: 'Transporte (pasajes o gasolina propia)', monto: 0 },
+      { id: 8, concepto: 'Entrega a domicilio', monto: 0 }
+    ];
+    let nextIngId = 1;
+    let nextGastoId = 9;
+
+    function formatoDinero(num) {
+      if (!isFinite(num) || isNaN(num)) return '$0.00';
+      return '$' + Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ===================== INICIALIZACIÓN =====================
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarDatos();
+      if (ingredientes.length === 0) {
+        agregarIngrediente();
+        agregarIngrediente();
+        agregarIngrediente();
+      }
+      renderIngredientes();
+      renderGastosFijos();
+      calcularTodo();
+    });
+
+    function cambiarTab(n) {
+      document.getElementById('modulo1').classList.toggle('hidden', n !== 1);
+      document.getElementById('modulo2').classList.toggle('hidden', n !== 2);
+      document.getElementById('tab1').className = n === 1 ? 'tab-active px-5 py-3 text-sm sm:text-base flex items-center gap-2 whitespace-nowrap' : 'tab-inactive px-5 py-3 text-sm sm:text-base flex items-center gap-2 whitespace-nowrap';
+      document.getElementById('tab2').className = n === 2 ? 'tab-active px-5 py-3 text-sm sm:text-base flex items-center gap-2 whitespace-nowrap' : 'tab-inactive px-5 py-3 text-sm sm:text-base flex items-center gap-2 whitespace-nowrap';
+    }
+
+    // ===================== INGREDIENTES =====================
+    function agregarIngrediente() {
+      ingredientes.push({ 
+        id: nextIngId++, 
+        nombre: '', 
+        unidadCompra: 'kg', 
+        costoCompra: 0, 
+        cantidad: 0,
+        unidadUso: 'gr'
+      });
+      renderIngredientes();
+      guardarDatos();
+    }
+
+    function eliminarIngrediente(id) {
+      if (ingredientes.length <= 1) return;
+      ingredientes = ingredientes.filter(i => i.id !== id);
+      renderIngredientes();
+      calcularTodo();
+      guardarDatos();
+    }
+
+    function actualizarIngrediente(id, campo, valor) {
+      const ing = ingredientes.find(i => i.id === id);
+      if (!ing) return;
+      if (campo === 'nombre' || campo === 'unidadCompra' || campo === 'unidadUso') {
+        ing[campo] = valor;
+      } else {
+        ing[campo] = parseFloat(valor) || 0;
+      }
+      calcularTodo();
+      guardarDatos();
+    }
+
+    function renderIngredientes() {
+      const tbody = document.getElementById('bodyIngredientes');
+      tbody.innerHTML = '';
+      ingredientes.forEach(ing => {
+        const costo = calcularCostoIngrediente(ing);
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="py-2 px-2">
+            <input type="text" value="${ing.nombre}" placeholder="Ej. Carne de cerdo" class="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-emerald-500 outline-none" oninput="actualizarIngrediente(${ing.id}, 'nombre', this.value)" />
+          </td>
+          <td class="py-2 px-2">
+            <select class="border border-slate-200 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-emerald-500 outline-none" onchange="actualizarIngrediente(${ing.id}, 'unidadCompra', this.value)">
+              <option value="kg" ${ing.unidadCompra === 'kg' ? 'selected' : ''}>kg</option>
+              <option value="gr" ${ing.unidadCompra === 'gr' ? 'selected' : ''}>gr</option>
+              <option value="lt" ${ing.unidadCompra === 'lt' ? 'selected' : ''}>lt</option>
+              <option value="ml" ${ing.unidadCompra === 'ml' ? 'selected' : ''}>ml</option>
+              <option value="pieza" ${ing.unidadCompra === 'pieza' ? 'selected' : ''}>pieza</option>
+            </select>
+          </td>
+          <td class="py-2 px-2">
+            <input type="number" min="0" step="0.01" value="${ing.costoCompra}" class="w-24 border border-slate-200 rounded px-2 py-1.5 text-sm text-right focus:ring-1 focus:ring-emerald-500 outline-none" oninput="actualizarIngrediente(${ing.id}, 'costoCompra', this.value)" />
+          </td>
+          <td class="py-2 px-2">
+            <input type="number" min="0" step="0.001" value="${ing.cantidad}" class="w-24 border border-slate-200 rounded px-2 py-1.5 text-sm text-right focus:ring-1 focus:ring-emerald-500 outline-none" oninput="actualizarIngrediente(${ing.id}, 'cantidad', this.value)" />
+          </td>
+          <td class="py-2 px-2">
+            <select class="border border-slate-200 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-emerald-500 outline-none" onchange="actualizarIngrediente(${ing.id}, 'unidadUso', this.value)">
+              <option value="kg" ${ing.unidadUso === 'kg' ? 'selected' : ''}>kg</option>
+              <option value="gr" ${ing.unidadUso === 'gr' ? 'selected' : ''}>gr</option>
+              <option value="lt" ${ing.unidadUso === 'lt' ? 'selected' : ''}>lt</option>
+              <option value="ml" ${ing.unidadUso === 'ml' ? 'selected' : ''}>ml</option>
+              <option value="pieza" ${ing.unidadUso === 'pieza' ? 'selected' : ''}>pieza</option>
+            </select>
+          </td>
+          <td class="py-2 px-2 text-right font-medium text-slate-700">${formatoDinero(costo)}</td>
+          <td class="py-2 px-2 text-center">
+            <button onclick="eliminarIngrediente(${ing.id})" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-times"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Conversión de unidades
+    function convertirCantidad(cantidad, unidadDesde, unidadHacia) {
+      if (unidadDesde === unidadHacia) return cantidad;
+
+      // Peso
+      if (unidadDesde === 'kg' && unidadHacia === 'gr') return cantidad * 1000;
+      if (unidadDesde === 'gr' && unidadHacia === 'kg') return cantidad / 1000;
+
+      // Volumen
+      if (unidadDesde === 'lt' && unidadHacia === 'ml') return cantidad * 1000;
+      if (unidadDesde === 'ml' && unidadHacia === 'lt') return cantidad / 1000;
+
+      // Si no se puede convertir (ej. pieza a kg), se asume misma unidad
+      return cantidad;
+    }
+
+    function calcularCostoIngrediente(ing) {
+      const precio = parseFloat(ing.costoCompra) || 0;
+      const cantidadUsada = parseFloat(ing.cantidad) || 0;
+      
+      // Convertimos la cantidad usada a la misma unidad de compra
+      const cantidadEnUnidadCompra = convertirCantidad(cantidadUsada, ing.unidadUso, ing.unidadCompra);
+      
+      const costo = precio * cantidadEnUnidadCompra;
+      return isNaN(costo) ? 0 : costo;
+    }
+
+    // ===================== GASTOS FIJOS =====================
+    function agregarGastoFijo() {
+      gastosFijos.push({ id: nextGastoId++, concepto: '', monto: 0 });
+      renderGastosFijos();
+      guardarDatos();
+    }
+
+    function eliminarGastoFijo(id) {
+      if (gastosFijos.length <= 1) return;
+      gastosFijos = gastosFijos.filter(g => g.id !== id);
+      renderGastosFijos();
+      calcularTodo();
+      guardarDatos();
+    }
+
+    function actualizarGastoFijo(id, campo, valor) {
+      const g = gastosFijos.find(x => x.id === id);
+      if (!g) return;
+      if (campo === 'concepto') g.concepto = valor;
+      else g.monto = parseFloat(valor) || 0;
+      calcularTodo();
+      guardarDatos();
+    }
+
+    function renderGastosFijos() {
+      const tbody = document.getElementById('bodyGastosFijos');
+      tbody.innerHTML = '';
+      gastosFijos.forEach(g => {
+        let extra = '';
+        
+        if (g.concepto.toLowerCase().includes('transporte')) {
+          extra = '<p class="text-xs text-slate-500 mt-0.5">Pasajes de transporte público, transporte privado o gasolina de tu propio vehículo para moverte por el negocio (ir a comprar, banco, etc.)</p>';
+        }
+        if (g.concepto.toLowerCase().includes('entrega') || g.concepto.toLowerCase().includes('domicilio')) {
+          extra = '<p class="text-xs text-slate-500 mt-0.5">Costo de repartir la comida a los clientes (gasolina de tu vehículo para entregas, o lo que pagas a repartidores / aplicaciones)</p>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="py-2 px-2">
+            <input type="text" value="${g.concepto}" placeholder="Ej. Renta, sueldos..." class="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-emerald-500 outline-none" oninput="actualizarGastoFijo(${g.id}, 'concepto', this.value)" />
+            ${extra}
+          </td>
+          <td class="py-2 px-2">
+            <input type="number" min="0" step="0.01" value="${g.monto}" class="w-36 border border-slate-200 rounded px-2 py-1.5 text-sm text-right focus:ring-1 focus:ring-emerald-500 outline-none" oninput="actualizarGastoFijo(${g.id}, 'monto', this.value)" />
+          </td>
+          <td class="py-2 px-2 text-center">
+            <button onclick="eliminarGastoFijo(${g.id})" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-times"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ===================== CÁLCULOS =====================
+    function calcularTodo() {
+      // ----- Módulo 1 (solo costeo) -----
+      const porciones = Math.max(1, parseFloat(document.getElementById('porciones').value) || 1);
+      let totalIngredientes = 0;
+      ingredientes.forEach(ing => totalIngredientes += calcularCostoIngrediente(ing));
+      const costoIngPorPorcion = totalIngredientes / porciones;
+
+      const empaque = parseFloat(document.getElementById('costoEmpaque').value) || 0;
+      const pctMerma = (parseFloat(document.getElementById('porcentajeMerma').value) || 0) / 100;
+      const costoMerma = costoIngPorPorcion * pctMerma;
+
+      const costoTotalPlatillo = costoIngPorPorcion + empaque + costoMerma;
+
+      const margen = (parseFloat(document.getElementById('margenGanancia').value) || 65) / 100;
+      let precioSinIVA = margen < 1 ? costoTotalPlatillo / (1 - margen) : costoTotalPlatillo * 3;
+      if (!isFinite(precioSinIVA) || isNaN(precioSinIVA)) precioSinIVA = 0;
+
+      const incluirIVA = document.getElementById('incluirIVA').checked;
+      const precioFinal = incluirIVA ? precioSinIVA * 1.16 : precioSinIVA;
+      const ganancia = precioFinal - costoTotalPlatillo;
+
+      document.getElementById('costoIngredientes').textContent = formatoDinero(totalIngredientes);
+      document.getElementById('costoTotalPlatillo').textContent = formatoDinero(costoTotalPlatillo);
+      document.getElementById('precioVenta').textContent = formatoDinero(precioFinal);
+      document.getElementById('gananciaPorPlatillo').textContent = formatoDinero(ganancia);
+
+      const multiplicador = costoTotalPlatillo > 0 ? (precioFinal / costoTotalPlatillo) : 0;
+      document.getElementById('infoMultiplicador').textContent = costoTotalPlatillo > 0
+        ? `Multiplicador: x${multiplicador.toFixed(2)} · Costo del producto representa el ${((costoTotalPlatillo / precioFinal) * 100).toFixed(1)}% del precio`
+        : '';
+
+      // ----- Módulo 2 (independiente) -----
+      const ventasDiaDinero = parseFloat(document.getElementById('ventasDia').value) || 0;
+      const diasMes = Math.max(1, parseFloat(document.getElementById('diasMes').value) || 26);
+      const costoMateriaPrima = parseFloat(document.getElementById('costoMateriaPrima').value) || 0;
+
+      const totalGastosFijos = gastosFijos.reduce((sum, g) => sum + (parseFloat(g.monto) || 0), 0);
+      const ventaTotal = ventasDiaDinero * diasMes;
+      const utilidadNeta = ventaTotal - costoMateriaPrima - totalGastosFijos;
+
+      document.getElementById('totalGastosFijos').textContent = formatoDinero(totalGastosFijos);
+      document.getElementById('ventaTotalMes').textContent = formatoDinero(ventaTotal);
+      document.getElementById('costoInsumosMes').textContent = formatoDinero(costoMateriaPrima);
+      document.getElementById('gastosFijosResumen').textContent = formatoDinero(totalGastosFijos);
+      document.getElementById('utilidadNetaMes').textContent = formatoDinero(utilidadNeta);
+      document.getElementById('utilidadNetaMes').className = utilidadNeta >= 0
+        ? 'text-3xl font-bold text-emerald-600'
+        : 'text-3xl font-bold text-red-600';
+
+      // === PUNTO DE EQUILIBRIO ===
+      let peMes = 0;
+      let peDia = 0;
+      let mensajePE = '';
+
+      if (totalGastosFijos === 0) {
+        mensajePE = 'Primero agrega tus gastos fijos (renta, luz, sueldos, etc.) para calcular el punto de equilibrio.';
+        document.getElementById('peDia').textContent = '—';
+        document.getElementById('peMes').textContent = '—';
+      } 
+      else if (ventaTotal > 0 && costoMateriaPrima >= ventaTotal) {
+        mensajePE = 'Con estos números no se puede alcanzar el punto de equilibrio. El costo de materia prima es igual o mayor que tus ventas. Necesitas bajar el costo de ingredientes o subir el precio / volumen de ventas.';
+        document.getElementById('peDia').textContent = 'No aplica';
+        document.getElementById('peMes').textContent = 'No aplica';
+      } 
+      else {
+        let ratioContribucion = 0.65;
+        let usandoEstimado = true;
+
+        if (ventaTotal > 0 && costoMateriaPrima > 0) {
+          const ratioCostoVariable = costoMateriaPrima / ventaTotal;
+          ratioContribucion = 1 - ratioCostoVariable;
+          usandoEstimado = false;
+        }
+
+        if (ratioContribucion > 0) {
+          peMes = totalGastosFijos / ratioContribucion;
+          peDia = peMes / diasMes;
+
+          document.getElementById('peDia').textContent = formatoDinero(peDia);
+          document.getElementById('peMes').textContent = formatoDinero(peMes);
+
+          if (usandoEstimado) {
+            mensajePE = 'Cálculo aproximado usando un margen del 65% (común en comida). Ingresa tu Costo de materia prima del mes para un resultado más exacto.';
+          } else {
+            mensajePE = 'Este es el mínimo de ventas en dinero que necesitas para cubrir todos tus gastos fijos (renta, luz, sueldos, transporte, entregas, etc.).';
+          }
+        } else {
+          document.getElementById('peDia').textContent = '—';
+          document.getElementById('peMes').textContent = '—';
+          mensajePE = 'No se pudo calcular el punto de equilibrio con los datos actuales.';
+        }
+      }
+
+      document.getElementById('peExplicacion').textContent = mensajePE;
+    }
+
+    // ===================== PERSISTENCIA =====================
+    function guardarDatos() {
+      const data = {
+        nombreNegocio: document.getElementById('nombreNegocio').value,
+        tipoGiro: document.getElementById('tipoGiro').value,
+        nombrePlatillo: document.getElementById('nombrePlatillo').value,
+        porciones: document.getElementById('porciones').value,
+        ingredientes,
+        nextIngId,
+        costoEmpaque: document.getElementById('costoEmpaque').value,
+        porcentajeMerma: document.getElementById('porcentajeMerma').value,
+        margenGanancia: document.getElementById('margenGanancia').value,
+        incluirIVA: document.getElementById('incluirIVA').checked,
+        gastosFijos,
+        nextGastoId,
+        ventasDia: document.getElementById('ventasDia').value,
+        diasMes: document.getElementById('diasMes').value,
+        costoMateriaPrima: document.getElementById('costoMateriaPrima').value
+      };
+      localStorage.setItem('calculadoraAlimentos', JSON.stringify(data));
+    }
+
+    function cargarDatos() {
+      const raw = localStorage.getItem('calculadoraAlimentos');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        document.getElementById('nombreNegocio').value = data.nombreNegocio || '';
+        document.getElementById('tipoGiro').value = data.tipoGiro || 'Taquería';
+        document.getElementById('nombrePlatillo').value = data.nombrePlatillo || '';
+        document.getElementById('porciones').value = data.porciones || 1;
+        if (Array.isArray(data.ingredientes) && data.ingredientes.length) {
+          // Compatibilidad con versiones anteriores
+          ingredientes = data.ingredientes.map(ing => ({
+            id: ing.id,
+            nombre: ing.nombre || '',
+            unidadCompra: ing.unidadCompra || ing.unidad || 'kg',
+            costoCompra: ing.costoCompra || 0,
+            cantidad: ing.cantidad || 0,
+            unidadUso: ing.unidadUso || ing.unidad || 'gr'
+          }));
+          nextIngId = data.nextIngId || (Math.max(...ingredientes.map(i => i.id)) + 1);
+        }
+        document.getElementById('costoEmpaque').value = data.costoEmpaque || 0;
+        document.getElementById('porcentajeMerma').value = data.porcentajeMerma || 10;
+        document.getElementById('porcentajeMermaLabel').textContent = (data.porcentajeMerma || 10) + '%';
+        document.getElementById('margenGanancia').value = data.margenGanancia || 65;
+        document.getElementById('margenLabel').textContent = (data.margenGanancia || 65) + '%';
+        document.getElementById('incluirIVA').checked = !!data.incluirIVA;
+        if (Array.isArray(data.gastosFijos) && data.gastosFijos.length) {
+          gastosFijos = data.gastosFijos;
+          nextGastoId = data.nextGastoId || (Math.max(...gastosFijos.map(g => g.id)) + 1);
+        }
+        document.getElementById('ventasDia').value = data.ventasDia || 5000;
+        document.getElementById('diasMes').value = data.diasMes || 26;
+        document.getElementById('costoMateriaPrima').value = data.costoMateriaPrima || 0;
+      } catch (e) {
+        console.warn('Error cargando datos', e);
+      }
+    }
+
+    function limpiarTodo() {
+      if (!confirm('¿Seguro que quieres borrar todos los datos y empezar de cero?')) return;
+      localStorage.removeItem('calculadoraAlimentos');
+      location.reload();
+    }
+
+    // ===================== PDF =====================
+    function generarPDF() {
+      document.getElementById('pdf-nombreNegocio').textContent = document.getElementById('nombreNegocio').value || 'Mi Negocio de Alimentos';
+      document.getElementById('pdf-tipoGiro').textContent = document.getElementById('tipoGiro').value;
+      document.getElementById('pdf-fecha').textContent = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('pdf-nombrePlatillo').textContent = document.getElementById('nombrePlatillo').value || '—';
+      document.getElementById('pdf-porciones').textContent = document.getElementById('porciones').value || 1;
+
+      const tbodyPdf = document.getElementById('pdf-ingredientes');
+      tbodyPdf.innerHTML = '';
+      let totalIng = 0;
+      ingredientes.forEach(ing => {
+        const costo = calcularCostoIngrediente(ing);
+        totalIng += costo;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="border border-slate-300 py-1.5 px-2">${ing.nombre || '—'}</td>
+          <td class="border border-slate-300 py-1.5 px-2">${ing.unidadCompra}</td>
+          <td class="border border-slate-300 py-1.5 px-2 text-right">${formatoDinero(ing.costoCompra || 0)}</td>
+          <td class="border border-slate-300 py-1.5 px-2 text-right">${ing.cantidad || 0}</td>
+          <td class="border border-slate-300 py-1.5 px-2">${ing.unidadUso}</td>
+          <td class="border border-slate-300 py-1.5 px-2 text-right">${formatoDinero(costo)}</td>
+        `;
+        tbodyPdf.appendChild(tr);
+      });
+
+      document.getElementById('pdf-costoIngredientes').textContent = formatoDinero(totalIng);
+      document.getElementById('pdf-empaque').textContent = formatoDinero(parseFloat(document.getElementById('costoEmpaque').value) || 0);
+      document.getElementById('pdf-merma').textContent = document.getElementById('porcentajeMerma').value + '%';
+      document.getElementById('pdf-costoTotal').textContent = document.getElementById('costoTotalPlatillo').textContent;
+      document.getElementById('pdf-margen').textContent = document.getElementById('margenGanancia').value + '%';
+      document.getElementById('pdf-precio').textContent = document.getElementById('precioVenta').textContent;
+      document.getElementById('pdf-ganancia').textContent = document.getElementById('gananciaPorPlatillo').textContent;
+
+      document.getElementById('pdf-ventasDia').textContent = formatoDinero(parseFloat(document.getElementById('ventasDia').value) || 0);
+      document.getElementById('pdf-diasMes').textContent = document.getElementById('diasMes').value;
+      document.getElementById('pdf-ventaTotal').textContent = document.getElementById('ventaTotalMes').textContent;
+      document.getElementById('pdf-costoInsumos').textContent = document.getElementById('costoInsumosMes').textContent;
+      document.getElementById('pdf-gastosFijos').textContent = document.getElementById('totalGastosFijos').textContent;
+      document.getElementById('pdf-utilidad').textContent = document.getElementById('utilidadNetaMes').textContent;
+      document.getElementById('pdf-peDia').textContent = document.getElementById('peDia').textContent;
+      document.getElementById('pdf-peMes').textContent = document.getElementById('peMes').textContent;
+
+      const element = document.getElementById('pdf-content');
+      element.classList.remove('hidden');
+
+      const opt = {
+        margin: [12, 12, 12, 12],
+        filename: `Reporte_Costos_${(document.getElementById('nombreNegocio').value || 'Negocio').replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      html2pdf().set(opt).from(element).save().then(() => {
+        element.classList.add('hidden');
+      }).catch(() => {
+        element.classList.add('hidden');
+        alert('Hubo un problema al generar el PDF. Intenta de nuevo.');
+      });
+    }
+  </script>
+</body>
+</html>
